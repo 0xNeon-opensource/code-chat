@@ -18,6 +18,7 @@ export const ChatInput = ({ onUpdate, onReset, waiting }: Props) => {
 
   const handleUpdate = () => {
     setPrompt("");
+    console.log('prompt :>> ', prompt);
     onUpdate(prompt);
   };
 

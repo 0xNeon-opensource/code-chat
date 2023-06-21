@@ -5,6 +5,7 @@ import { ChatContent, type ChatItem } from "../components/ChatContent";
 import { ChatInput } from "../components/ChatInput";
 import { Header } from "../components/Header";
 import { api } from "../utils/api";
+import PropagateLoader from "react-spinners/PropagateLoader";
 
 const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
@@ -61,6 +62,7 @@ const Home: NextPage = () => {
 
     scrollToBottom();
 
+    console.log('prompt in handleUpdate :>> ', prompt);
     generatedTextMutation.mutate({ prompt });
   };
 
@@ -85,6 +87,11 @@ const Home: NextPage = () => {
           <ChatContent chatItems={chatItems} />
           <div ref={scrollToRef} />
         </section>
+
+
+        {waiting && <div className="w-full h-10 py-6 flex items-center place-content-center">
+          <PropagateLoader color="white" />
+        </div>}
 
         <section className="w-full">
           <ChatInput
