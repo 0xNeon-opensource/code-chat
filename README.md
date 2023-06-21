@@ -1,11 +1,6 @@
-# ChatGPT Clone 
+# Code Chat
 
-This repo was built during the recording of a YouTube tutorial.
-
-[![2023-03-chatgpt-clone](https://user-images.githubusercontent.com/8336893/227527277-5546b273-04a5-45d1-ab06-b13de306b8bb.png)
-](https://www.youtube.com/watch?v=AyNJBrZ9UJI)
-
-![image](https://user-images.githubusercontent.com/8336893/227393361-6815e502-a2c9-49bd-8e7c-61e58f578d3f.png)
+Experimental dev setup for a chat bot connected to local repo and docs to assist with coding.
 
 
 ## Stack
@@ -15,6 +10,10 @@ This repo was built during the recording of a YouTube tutorial.
 - tRPC
 - Zod
 - Tailwind
+
+## Setup
+
+First, create a `.env` based on `.env.example`.
 
 ## Install
 ```
