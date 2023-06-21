@@ -72,13 +72,13 @@ export const ChatInput = ({ onUpdate, onReset, waiting }: Props) => {
                 <path
                   d="M14 26C7.37258 26 2 20.6274 2 14C2 7.37258 7.37258 2 14 2"
                   stroke="white"
-                  stroke-width="4"
+                  strokeWidth="4"
                 />
                 <path
                   d="M14 26C20.6274 26 26 20.6274 26 14C26 7.37258 20.6274 2 14 2C7.37258 2 2 7.37258 2 14C2 20.6274 7.37258 26 14 26Z"
                   stroke="white"
-                  stroke-opacity="0.3"
-                  stroke-width="4"
+                  strokeOpacity="0.3"
+                  strokeWidth="4"
                 />
               </svg>
             )}

@@ -1,6 +1,6 @@
 import { type NextPage } from "next";
 import Head from "next/head";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ChatContent, type ChatItem } from "../components/ChatContent";
 import { ChatInput } from "../components/ChatInput";
 import { Header } from "../components/Header";
@@ -11,6 +11,9 @@ const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [waiting, setWaiting] = useState<boolean>(false);
   const scrollToRef = useRef<HTMLDivElement>(null);
+
+  const callHello = api.ai.hello.useQuery({ text: 'Hi its me' });
+  console.log('callHello :>> ', callHello.data?.greeting);
 
   const scrollToBottom = () => {
     setTimeout(

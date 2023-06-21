@@ -65,4 +65,12 @@ export const aiRouter = createTRPCRouter({
   reset: publicProcedure.mutation(() => {
     messages.length = 0;
   }),
+
+  hello: publicProcedure
+    .input(z.object({ text: z.string() }))
+    .query(({ input }) => {
+      return {
+        greeting: `Hello ${input.text}`,
+      };
+    }),
 });
