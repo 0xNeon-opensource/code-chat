@@ -1,5 +1,8 @@
 import { DirectoryLoader } from "langchain/document_loaders/fs/directory";
 import { TextLoader } from "langchain/document_loaders/fs/text";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { Configuration, OpenAIApi } from "openai";
@@ -69,14 +72,30 @@ export const aiRouter = createTRPCRouter({
   }),
 
   testDocumentLoader: publicProcedure.mutation(async () => {
+    // Load a directory of text files
     const loader = new DirectoryLoader(
-      "src/data/codeAsTxtFiles/oneReactComponent",
+      "src/data/codeAsTxtFiles/oneTsFile",
       {
         ".txt": (path) => new TextLoader(path),
       }
     );
     const docs = await loader.load();
     console.log('docs :>> ', docs);
+
+    // Split the text into chunks
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 0,
+    });
+
+    console.log('splitting...');
+
+
+    const text = await splitter.splitDocuments(docs);
+
+    console.log('text :>> ', text);
+
+    const embeddings = new OpenAIEmbeddings();
   }),
 
   hello: publicProcedure
