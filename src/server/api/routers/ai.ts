@@ -1,3 +1,5 @@
+import { DirectoryLoader } from "langchain/document_loaders/fs/directory";
+import { TextLoader } from "langchain/document_loaders/fs/text";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { Configuration, OpenAIApi } from "openai";
@@ -64,6 +66,17 @@ export const aiRouter = createTRPCRouter({
 
   reset: publicProcedure.mutation(() => {
     messages.length = 0;
+  }),
+
+  testDocumentLoader: publicProcedure.mutation(async () => {
+    const loader = new DirectoryLoader(
+      "src/data/codeAsTxtFiles/oneReactComponent",
+      {
+        ".txt": (path) => new TextLoader(path),
+      }
+    );
+    const docs = await loader.load();
+    console.log('docs :>> ', docs);
   }),
 
   hello: publicProcedure

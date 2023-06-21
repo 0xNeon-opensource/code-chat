@@ -6,14 +6,15 @@ import { ChatInput } from "../components/ChatInput";
 import { Header } from "../components/Header";
 import { api } from "../utils/api";
 import PropagateLoader from "react-spinners/PropagateLoader";
+import TestLangChain from "~/components/TestLangChain";
 
 const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [waiting, setWaiting] = useState<boolean>(false);
   const scrollToRef = useRef<HTMLDivElement>(null);
 
-  const callHello = api.ai.hello.useQuery({ text: 'Hi its me' });
-  console.log('callHello :>> ', callHello.data?.greeting);
+  // const callHello = api.ai.hello.useQuery({ text: 'Hi its me' });
+  // console.log('callHello :>> ', callHello.data?.greeting);
 
   const scrollToBottom = () => {
     setTimeout(
@@ -103,6 +104,8 @@ const Home: NextPage = () => {
             waiting={waiting}
           />
         </section>
+
+        <TestLangChain />
       </div>
     </>
   );
