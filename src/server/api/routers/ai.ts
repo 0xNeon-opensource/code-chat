@@ -7,6 +7,7 @@ import { ConversationalRetrievalQAChain } from "langchain/chains";
 import { OpenAI } from "langchain/llms/openai";
 import { BufferMemory } from "langchain/memory";
 import * as fs from "fs";
+import { ChatOpenAI } from "langchain/chat_models/openai";
 
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { z } from "zod";
@@ -119,16 +120,49 @@ export const aiRouter = createTRPCRouter({
         memory: new BufferMemory({
           memoryKey: "chat_history", // Must be set to "chat_history"
         }),
+        // questionGeneratorChainOptions: {
+        /*
+          will use this template to generate a question from the conversation context instead of using the
+          question provided in the question parameter.
+          This can be useful if the original question does not contain enough information to retrieve a
+          suitable answer.
+        */
+        // template: "This code is part of a cryptocurrency wallet repository.",
+        // },
+      }
+    );
+
+    const fasterModel = new ChatOpenAI({
+      modelName: "gpt-3.5-turbo",
+    });
+    const slowerModel = new ChatOpenAI({
+      modelName: "gpt-4",
+    });
+
+    const chain2 = ConversationalRetrievalQAChain.fromLLM(
+      slowerModel,
+      vectorStore.asRetriever(),
+      {
+        returnSourceDocuments: true,
+        memory: new BufferMemory({
+          memoryKey: "chat_history",
+          inputKey: "question", // The key for the input to the chain
+          outputKey: "text", // The key for the final conversational output of the chain
+          returnMessages: true, // If using with a chat model
+        }),
+        questionGeneratorChainOptions: {
+          llm: fasterModel,
+        },
       }
     );
 
     /* Ask it a question */
     const question = "What is this code about?";
-    const res = await chain.call({ question });
+    const res = await chain2.call({ question });
     console.log('res :>> ', res);
     /* Ask it a follow up question */
-    const followUpRes = await chain.call({
-      question: "What was the question I just asked you?",
+    const followUpRes = await chain2.call({
+      question: "What is the repository about?",
     });
     console.log('followUpRes :>> ', followUpRes);
   }),
