@@ -2,6 +2,11 @@ import { DirectoryLoader } from "langchain/document_loaders/fs/directory";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { HNSWLib } from "langchain/vectorstores/hnswlib";
+import { ConversationalRetrievalQAChain } from "langchain/chains";
+import { OpenAI } from "langchain/llms/openai";
+import { BufferMemory } from "langchain/memory";
+import * as fs from "fs";
 
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { z } from "zod";
@@ -80,7 +85,7 @@ export const aiRouter = createTRPCRouter({
       }
     );
     const docs = await loader.load();
-    console.log('docs :>> ', docs);
+    // console.log('docs :>> ', docs);
 
     // Split the text into chunks
     const splitter = new RecursiveCharacterTextSplitter({
@@ -88,14 +93,44 @@ export const aiRouter = createTRPCRouter({
       chunkOverlap: 0,
     });
 
-    console.log('splitting...');
+    // console.log('splitting...');
 
 
     const text = await splitter.splitDocuments(docs);
 
-    console.log('text :>> ', text);
+    // console.log('text :>> ', text);
 
     const embeddings = new OpenAIEmbeddings();
+
+    // console.log('embeddings :>> ', embeddings);
+
+    // HNSWLib is a local, in-memory vector store
+    const vectorStore = await HNSWLib.fromDocuments(text, embeddings);
+
+    // console.log('vectorStore :>> ', vectorStore);
+
+    const model = new OpenAI({});
+
+
+    const chain = ConversationalRetrievalQAChain.fromLLM(
+      model,
+      vectorStore.asRetriever(),
+      {
+        memory: new BufferMemory({
+          memoryKey: "chat_history", // Must be set to "chat_history"
+        }),
+      }
+    );
+
+    /* Ask it a question */
+    const question = "What is this code about?";
+    const res = await chain.call({ question });
+    console.log('res :>> ', res);
+    /* Ask it a follow up question */
+    const followUpRes = await chain.call({
+      question: "What was the question I just asked you?",
+    });
+    console.log('followUpRes :>> ', followUpRes);
   }),
 
   hello: publicProcedure
