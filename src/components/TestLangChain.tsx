@@ -10,8 +10,17 @@ const TestLangChain: React.FC = () => {
         test.mutate();
     }, [test])
 
+    const test2 = api.ai.testStreamingLlm.useMutation();
+    const testStreamingLlm = useCallback(async () => {
+        console.log('testing streaming llm');
+        test2.mutate();
+    }, [test2])
+
     return (
-        <button onClick={testDocumentLoader}>Test document loader</button>
+        <div className="flex flex-col gap-4">
+            <button onClick={testDocumentLoader}>Test document loader</button>
+            <button onClick={testStreamingLlm}>Test Streaming LLM</button>
+        </div>
     );
 }
 
