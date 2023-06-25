@@ -16,10 +16,17 @@ const TestLangChain: React.FC = () => {
         test2.mutate();
     }, [test2])
 
+    const test3 = api.ai.testChatMemory.useMutation();
+    const testChatMemory = useCallback(async () => {
+        console.log('testing chat mem');
+        test3.mutate();
+    }, [test3])
+
     return (
         <div className="flex flex-col gap-4">
             <button onClick={testDocumentLoader}>Test document loader</button>
             <button onClick={testStreamingLlm}>Test Streaming LLM</button>
+            <button onClick={testChatMemory}>Test Chat Mem</button>
         </div>
     );
 }

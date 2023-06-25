@@ -1,18 +1,21 @@
-import { NextResponse } from "next/server";
+import { ConversationalRetrievalQAChain } from "langchain/chains";
 import { ChatOpenAI } from "langchain/chat_models/openai";
+import { BufferMemory } from "langchain/memory";
+
+import { TRPCError } from "@trpc/server";
+import axios from "axios";
 import { LLMChain } from "langchain/chains";
-import { CallbackManager } from "langchain/callbacks";
 import {
   ChatPromptTemplate,
   HumanMessagePromptTemplate,
   SystemMessagePromptTemplate,
 } from "langchain/prompts";
-import { TRPCError } from "@trpc/server";
-import axios from "axios";
 import { Configuration, OpenAIApi } from "openai";
 import { z } from "zod";
+import { run } from "~/playground/chatMemory";
 import { test as simpleDocLoader } from "~/playground/simpleDocLoader";
 import { streamingLlm } from "~/playground/streamingLlm";
+import { getVectorStoreForStateOfTheUnion } from "~/utils/ingest";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 const configuration = new Configuration({
@@ -27,8 +30,6 @@ type Message = {
 };
 
 const messages: Message[] = [];
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const aiRouter = createTRPCRouter({
   generateText: publicProcedure
@@ -99,8 +100,6 @@ export const aiRouter = createTRPCRouter({
       });
 
       const resB = await chainB.call({
-        input_language: "English",
-        output_language: "French",
         text: messages.splice(0, messages.length).map((message) => message.content).join("\n")
       });
 
@@ -119,59 +118,109 @@ export const aiRouter = createTRPCRouter({
       }
     }),
 
-  generateTextLangchainStream: publicProcedure
+  chatWithStateOfTheUnion: publicProcedure
     .input(z.object({ prompt: z.string() }))
     .mutation(async ({ input }) => {
       const { prompt } = input;
 
-      const encoder = new TextEncoder();
-      const stream = new TransformStream();
-      const writer = stream.writable.getWriter();
-
-      const llm = new ChatOpenAI({
-        openAIApiKey: OPENAI_API_KEY,
-        temperature: 0.9,
-        streaming: true,
-        callbackManager: CallbackManager.fromHandlers({
-          handleLLMNewToken: async (token) => {
-            await writer.ready;
-            await writer.write(encoder.encode(`${token}`));
-          },
-          handleLLMEnd: async () => {
-            await writer.ready;
-            await writer.close();
-          },
-          handleLLMError: async (e) => {
-            await writer.ready;
-            await writer.abort(e);
-          },
-        }),
+      messages.push({
+        role: "user",
+        content: prompt,
       });
 
+      const vectorStore = await getVectorStoreForStateOfTheUnion();
+
+      const fasterModel = new ChatOpenAI({
+        modelName: "gpt-3.5-turbo",
+      });
+      const slowerModel = new ChatOpenAI({
+        modelName: "gpt-4",
+      });
+      const chain = ConversationalRetrievalQAChain.fromLLM(
+        slowerModel,
+        vectorStore.asRetriever(),
+        {
+          returnSourceDocuments: true,
+          memory: new BufferMemory({
+            memoryKey: "chat_history",
+            inputKey: "question", // The key for the input to the chain
+            outputKey: "text", // The key for the final conversational output of the chain
+            returnMessages: true, // If using with a chat model
+          }),
+          questionGeneratorChainOptions: {
+            llm: fasterModel,
+          },
+        }
+      );
+
+      const res = await chain.call({ question: messages.splice(0, messages.length).map((message) => message.content).join("\n") });
+
+      const generatedText = res.text as string;
+      console.log('generatedText :>> ', generatedText);
+
+      if (generatedText) {
+        messages.push({
+          role: "system",
+          content: generatedText,
+        });
+      }
+
+
+      return {
+        generatedText
+      }
+    }),
+
+
+  // Doesn't work yet
+  generateTextLangchainStreaming: publicProcedure
+    .input(z.object({ prompt: z.string() }))
+    .mutation(async ({ input }) => {
+      const { prompt } = input;
+
+      messages.push({
+        role: "user",
+        content: prompt,
+      });
+
+      const chat = new ChatOpenAI({ temperature: 0, streaming: true });
       const chatPrompt = ChatPromptTemplate.fromPromptMessages([
         SystemMessagePromptTemplate.fromTemplate(
-          "You are a helpful assistant that answers questions as best you can."
+          "You are a helpful assistant that responds only in brief rhyming poetry."
         ),
-        HumanMessagePromptTemplate.fromTemplate("{input}"),
+        HumanMessagePromptTemplate.fromTemplate("{text}"),
       ]);
-      const chain = new LLMChain({
+
+      const chainB = new LLMChain({
         prompt: chatPrompt,
-        llm: llm,
+        llm: chat,
       });
-      chain
-        // .call({input: body.query})
-        .call({ input: prompt })
-        .catch(console.error);
 
-      console.log('stream.readable :>> ', stream.readable);
-
-      return new NextResponse(stream.readable, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
+      const resB = await chainB.call({
+        text: messages.splice(0, messages.length).map((message) => message.content).join("\n")
+      }, [
+        {
+          handleLLMNewToken(token: string) {
+            process.stdout.write(token);
+          },
         },
-      });
+      ]);
 
+      console.log('resB :>> ', resB);
+
+      const generatedText = resB.text as string;
+
+      if (generatedText) {
+        messages.push({
+          role: "system",
+          content: generatedText,
+        });
+      }
+
+
+      return {
+        generatedText: resB.text as string,
+      }
     }),
 
   reset: publicProcedure.mutation(() => {
@@ -184,6 +233,10 @@ export const aiRouter = createTRPCRouter({
 
   testStreamingLlm: publicProcedure.mutation(async () => {
     await streamingLlm();
+  }),
+
+  testChatMemory: publicProcedure.mutation(async () => {
+    await run();
   }),
 
   hello: publicProcedure
