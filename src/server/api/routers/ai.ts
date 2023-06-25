@@ -15,7 +15,7 @@ import { z } from "zod";
 import { run } from "~/playground/chatMemory";
 import { test as simpleDocLoader } from "~/playground/simpleDocLoader";
 import { streamingLlm } from "~/playground/streamingLlm";
-import { getVectorStoreForStateOfTheUnion } from "~/utils/ingest";
+import { getVectorStoreForReactProject, getVectorStoreForStateOfTheUnion } from "~/utils/ingest";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 const configuration = new Configuration({
@@ -129,6 +129,60 @@ export const aiRouter = createTRPCRouter({
       });
 
       const vectorStore = await getVectorStoreForStateOfTheUnion();
+
+      const fasterModel = new ChatOpenAI({
+        modelName: "gpt-3.5-turbo",
+      });
+      const slowerModel = new ChatOpenAI({
+        modelName: "gpt-4",
+      });
+      const chain = ConversationalRetrievalQAChain.fromLLM(
+        slowerModel,
+        vectorStore.asRetriever(),
+        {
+          returnSourceDocuments: true,
+          memory: new BufferMemory({
+            memoryKey: "chat_history",
+            inputKey: "question", // The key for the input to the chain
+            outputKey: "text", // The key for the final conversational output of the chain
+            returnMessages: true, // If using with a chat model
+          }),
+          questionGeneratorChainOptions: {
+            llm: fasterModel,
+          },
+        }
+      );
+
+      const res = await chain.call({ question: messages.splice(0, messages.length).map((message) => message.content).join("\n") });
+
+      const generatedText = res.text as string;
+      console.log('generatedText :>> ', generatedText);
+
+      if (generatedText) {
+        messages.push({
+          role: "system",
+          content: generatedText,
+        });
+      }
+
+
+      return {
+        generatedText
+      }
+    }),
+
+
+  chatWithReactProject: publicProcedure
+    .input(z.object({ prompt: z.string() }))
+    .mutation(async ({ input }) => {
+      const { prompt } = input;
+
+      messages.push({
+        role: "user",
+        content: prompt,
+      });
+
+      const vectorStore = await getVectorStoreForReactProject();
 
       const fasterModel = new ChatOpenAI({
         modelName: "gpt-3.5-turbo",

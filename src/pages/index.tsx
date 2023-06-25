@@ -23,7 +23,7 @@ const Home: NextPage = () => {
     );
   };
 
-  const generatedTextMutation = api.ai.chatWithStateOfTheUnion.useMutation({
+  const generatedTextMutation = api.ai.chatWithReactProject.useMutation({
     onSuccess: (data) => {
       setChatItems([
         ...chatItems,
