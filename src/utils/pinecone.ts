@@ -5,9 +5,10 @@ import { loadQAStuffChain } from 'langchain/chains'
 import { Document } from 'langchain/document'
 import { timeout } from 'pineconeConfig'
 import { PineconeClient } from '@pinecone-database/pinecone'
+import { ChatOpenAI } from 'langchain/chat_models/openai'
 
 
-export const queryPineconeVectorStoreAndQueryLLM = async (
+export const queryVectorStore = async (
     client: PineconeClient,
     indexName: string,
     question: string
@@ -29,11 +30,22 @@ export const queryPineconeVectorStoreAndQueryLLM = async (
     });
     // 5. Log the number of matches 
     console.log(`Found ${queryResponse.matches.length} matches...`);
+
+    return queryResponse
+}
+
+export const queryPineconeVectorStoreAndQueryLLM = async (
+    client: PineconeClient,
+    indexName: string,
+    question: string
+) => {
+
+    const queryResponse = await queryVectorStore(client, indexName, question);
     // 6. Log the question being asked
     console.log(`Asking question: ${question}...`);
     if (queryResponse.matches.length) {
         // 7. Create an OpenAI instance and load the QAStuffChain
-        const llm = new OpenAI({});
+        const llm = new ChatOpenAI({});
         const chain = loadQAStuffChain(llm);
         // 8. Extract and concatenate page content from matched documents
         const concatenatedPageContent = queryResponse.matches
