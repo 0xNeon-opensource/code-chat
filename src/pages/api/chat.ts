@@ -1,7 +1,7 @@
 // import { ChatOpenAI } from "langchain/chat_models";
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain } from "langchain/chains";
+import { LLMChain, loadQAStuffChain } from "langchain/chains";
 import { CallbackManager } from "langchain/callbacks";
 import {
     ChatPromptTemplate,
@@ -9,6 +9,10 @@ import {
     SystemMessagePromptTemplate,
 } from "langchain/prompts";
 import { HumanChatMessage, SystemChatMessage } from "langchain/schema";
+import { queryVectorStore } from "~/utils/pinecone";
+import { PineconeClient } from "@pinecone-database/pinecone";
+import { indexName } from "pineconeConfig";
+import { Document } from 'langchain/document'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -25,6 +29,20 @@ export default async function handler(req, res) {
     try {
         if (!OPENAI_API_KEY) {
             throw new Error("OPENAI_API_KEY is not defined.");
+        }
+
+        const client = new PineconeClient()
+        await client.init({
+            apiKey: process.env.PINECONE_API_KEY || '',
+            environment: process.env.PINECONE_ENVIRONMENT || ''
+        })
+
+        const queryResponse = await queryVectorStore(client, indexName, body.query);
+
+        if (!queryResponse.matches.length) {
+            console.error('no matches!!!!!!!!')
+            return res.status(500).json({ error: 'no matches' })
+
         }
 
         const encoder = new TextEncoder();
@@ -65,9 +83,22 @@ export default async function handler(req, res) {
             prompt: chatPrompt,
             llm: llm,
         });
-        chain
-            .call({ input: body.query })
-            .catch(console.error);
+
+
+
+        // 8. Extract and concatenate page content from matched documents
+        const concatenatedPageContent = queryResponse.matches
+            .map((match) => match.metadata.pageContent)
+            .join(" ");
+        // 9. Execute the chain with input documents and question
+        const chain2 = loadQAStuffChain(llm);
+        chain2.call({
+            input_documents: [new Document({ pageContent: concatenatedPageContent })],
+            question: body.query,
+        });
+        // chain
+        //     .call({ input: body.query })
+        //     .catch(console.error);
 
         return new NextResponse(stream.readable, {
             headers: {
