@@ -1,20 +1,17 @@
 import { type NextPage } from "next";
 import Head from "next/head";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { ChatContent, type ChatItem } from "../components/ChatContent";
 import { ChatInput } from "../components/ChatInput";
 import { Header } from "../components/Header";
-import { api } from "../utils/api";
 import PropagateLoader from "react-spinners/PropagateLoader";
 import TestLangChain from "~/components/TestLangChain";
 
 const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [waiting, setWaiting] = useState<boolean>(false);
+  const [hasStreamStarted, setHasStreamStarted] = useState(false);
   const scrollToRef = useRef<HTMLDivElement>(null);
-
-  // const callHello = api.ai.hello.useQuery({ text: 'Hi its me' });
-  // console.log('callHello :>> ', callHello.data?.greeting);
 
   const scrollToBottom = () => {
     setTimeout(
@@ -23,19 +20,44 @@ const Home: NextPage = () => {
     );
   };
 
-  const generatedTextMutation = api.ai.chatWithReactProject.useMutation({
-    onSuccess: (data) => {
-      setChatItems([
-        ...chatItems,
-        {
-          content: data.generatedText,
-          author: "AI",
-        },
-      ]);
-    },
+  const handleStreamResponse = async (res: Response) => {
+    let buffer = "";
+    const textDecoder = new TextDecoder();
+    setHasStreamStarted(true)
 
-    onError: (error) => {
-      setChatItems([
+    const reader = res.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        buffer += textDecoder.decode(value, { stream: true });
+
+        if (done) {
+          // if the stream is finished, finalize the last message
+          setChatItems((chatItems) => [
+            ...chatItems.slice(0, chatItems.length - 1), // excluding last item
+            {
+              // replace last chat item content with the final buffer
+              content: buffer.trim(),
+              author: "AI",
+            },
+          ]);
+          break;
+        } else {
+          // if the stream is not finished, update the last message with the current buffer
+          setChatItems((chatItems) => [
+            ...chatItems.slice(0, chatItems.length - 1), // excluding last item
+            {
+              // replace last chat item content with updated buffer
+              content: buffer,
+              author: "AI",
+            },
+          ]);
+          scrollToBottom();
+        }
+      }
+    } catch (error) {
+      setChatItems((chatItems) => [
         ...chatItems,
         {
           content: error.message ?? "An error occurred",
@@ -43,17 +65,14 @@ const Home: NextPage = () => {
           isError: true,
         },
       ]);
-    },
-
-    onSettled: () => {
+    } finally {
       setWaiting(false);
-      scrollToBottom();
-    },
-  });
+      setHasStreamStarted(false)
+    }
+  }
 
-  const resetMutation = api.ai.reset.useMutation();
 
-  const handleUpdate = (prompt: string) => {
+  const handleUpdate = async (prompt: string) => {
     setWaiting(true);
 
     setChatItems([
@@ -62,17 +81,31 @@ const Home: NextPage = () => {
         content: prompt.replace(/\n/g, "\n\n"),
         author: "User",
       },
+      {
+        content: '', // Placeholder for the incoming AI response
+        author: "AI",
+      },
     ]);
 
     scrollToBottom();
 
     console.log('prompt in handleUpdate :>> ', prompt);
-    generatedTextMutation.mutate({ prompt });
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: prompt,
+        history: [],  // You might want to replace this with actual history
+      }),
+    });
+
+    handleStreamResponse(res);
   };
 
   const handleReset = () => {
     setChatItems([]);
-    resetMutation.mutate();
   };
 
   return (
@@ -93,7 +126,7 @@ const Home: NextPage = () => {
         </section>
 
 
-        {waiting && <div className="w-full h-10 py-6 flex items-center place-content-center">
+        {waiting && !hasStreamStarted && <div className="w-full h-10 py-6 flex items-center place-content-center">
           <PropagateLoader color="white" />
         </div>}
 
