@@ -10,6 +10,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@pinecone-database/pinecone": "^0.1.6",
     "@prisma/client": "^4.9.0",
     "@tanstack/react-query": "^4.20.2",
     "@trpc/client": "^10.9.0",
