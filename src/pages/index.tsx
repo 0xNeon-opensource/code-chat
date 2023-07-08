@@ -111,7 +111,7 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>AI Chat Playground</title>
+        <title>Dev Shop 🐵</title>
         <meta name="description" content="AI Chat Playground" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
