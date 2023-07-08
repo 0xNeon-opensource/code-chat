@@ -6,6 +6,7 @@ import { ChatInput } from "../components/ChatInput";
 import { Header } from "../components/Header";
 import PropagateLoader from "react-spinners/PropagateLoader";
 import TestLangChain from "~/components/TestLangChain";
+import DocumentLoader from "~/components/DocumentLoader";
 
 const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
@@ -118,6 +119,10 @@ const Home: NextPage = () => {
       <div className="flex h-screen flex-col items-center bg-gray-800">
         <section className="w-full">
           <Header />
+        </section>
+
+        <section className="w-full">
+          <DocumentLoader />
         </section>
 
         <section className="w-full flex-grow overflow-y-scroll">
