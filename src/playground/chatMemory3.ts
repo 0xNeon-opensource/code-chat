@@ -3,18 +3,14 @@ import { ConversationChain, ConversationalRetrievalQAChain } from "langchain/cha
 import { HNSWLib } from "langchain/vectorstores/hnswlib";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { BufferMemory } from "langchain/memory";
+import { BufferMemory, ChatMessageHistory } from "langchain/memory";
 
 import * as fs from "fs";
 import { ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate } from "langchain/prompts";
+import { AIChatMessage, HumanChatMessage } from "langchain/schema";
 
 export const run3 = async () => {
-    console.log('CHAT MEM 222 STARTED');
-
-    const vectorStore = await HNSWLib.fromDocuments([], new OpenAIEmbeddings());
-    const slowerModel = new ChatOpenAI({
-        modelName: "gpt-4",
-    });
+    console.log('CHAT MEM 3 STARTED');
 
     const chatPrompt = ChatPromptTemplate.fromPromptMessages([
         SystemMessagePromptTemplate.fromTemplate(
@@ -24,19 +20,27 @@ export const run3 = async () => {
         HumanMessagePromptTemplate.fromTemplate("{input}"),
     ]);
 
+    const pastMessages = [
+        new HumanChatMessage("My name's Jonas"),
+        new AIChatMessage("Nice to meet you, Jonas!"),
+    ];
+
+    console.log('pastMessages :>> ', pastMessages);
+
+    const memory = new BufferMemory({ returnMessages: true, memoryKey: "history", chatHistory: new ChatMessageHistory(pastMessages) });
     const chain = new ConversationChain(
         {
-            llm: slowerModel,
+            llm: new ChatOpenAI(),
             prompt: chatPrompt,
-            memory: new BufferMemory({ returnMessages: true, memoryKey: "history" }),
+            memory,
         }
     );
     /* Ask it a question */
-    const res = await chain.call({ input: 'my favorite color is blue' });
+    const res = await chain.call({ input: 'what is my name' });
     console.log('res :>> ', res);
     console.log('============================');
 
-    const followUpRes = await chain.call({ input: "what's my favorite color?" });
+    const followUpRes = await chain.call({ input: "what does it mean" });
     console.log('followUpRes :>> ', followUpRes);
     console.log('============================');
 
