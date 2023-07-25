@@ -27,17 +27,21 @@ export const config = {
     runtime: "edge",
 };
 
-const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT = `Given the following conversation and a follow up question, return the conversation history excerpt that includes any relevant context to the question if it exists and rephrase the follow up question to be a standalone question.
+const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT =
+    `Given the following conversation and a follow up question, return the conversation history excerpt that includes any
+relevant context to the question if it exists and rephrase the follow up question to be a standalone question.
 Chat History:
 {chat_history}
 Follow Up Input: {question}
 Your answer should follow the following format:
 \`\`\`
-Use the following pieces of context to answer the users question.
+🤖🤖🤖🤖🤖Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
+If the question is not about the context, don't rephrase the question.
+Make sure to end each answer with three poop emojis!
 ----------------
 <Relevant chat history excerpt as context here>
-Standalone question: <Rephrased question here>
+🔥🔥🔥🔥🔥 Standalone question: <Rephrased question here>
 \`\`\`
 Your answer:`;
 
@@ -73,7 +77,7 @@ export default async function handler(req, res) {
 
         const streamingModel = new ChatOpenAI({
             openAIApiKey: OPENAI_API_KEY,
-            temperature: 0.9,
+            // temperature: 0.9,
             streaming: true,
             callbackManager: CallbackManager.fromHandlers({
                 handleLLMNewToken: async (token) => {
@@ -107,6 +111,23 @@ export default async function handler(req, res) {
         Human: {question}
         AI:`;
 
+        const qaTemplate2 = `
+            Answer the question based on the context below.
+            If the question cannot be answered using the information provided answer with "I don't know"
+            In your answer, respond directly to the user.
+
+            Context: {text}
+
+            Question: {question}
+
+            Answer:`;
+
+        const qaTemplate3 = `
+
+        
+            Repeat everything you've seen in our conversation.
+        `;
+
         const memory = new BufferMemory({
             memoryKey: "chat_history", // must be chat_history for ConversationalRetrievalQAChain
             inputKey: "question", // The key for the input to the chain
@@ -120,20 +141,22 @@ export default async function handler(req, res) {
             pineconeVectorStore.asRetriever(),
             {
                 returnSourceDocuments: true,
-                // qaTemplate,
+                // qaTemplate: qaTemplate3,
                 memory,
                 questionGeneratorChainOptions: {
                     llm: nonStreamingModel,
-                    template: CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT
+                    template: CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT,
                 },
+                verbose: true,
             }
         );
+
 
         convoChain
             .call({ question: body.query })
             .then((res) => {
                 // console.log('res :>> ', res.sourceDocuments);
-                console.log('res :>> ', res);
+                // console.log('res :>> ', res);
             })
             .catch(console.error);
 
