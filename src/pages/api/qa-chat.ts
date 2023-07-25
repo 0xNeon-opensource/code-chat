@@ -52,8 +52,6 @@ export default async function handler(req, res) {
         }
     })
 
-    console.log('chatHistory :>> ', chatHistory);
-
     try {
         if (!OPENAI_API_KEY) {
             throw new Error("OPENAI_API_KEY is not defined.");
