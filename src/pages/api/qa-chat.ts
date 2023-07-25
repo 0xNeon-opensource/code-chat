@@ -71,7 +71,7 @@ export default async function handler(req, res) {
             }),
         });
 
-        const qaTemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens", don't try to make up an answer. At the end of every answer, write three poop emojis
+        const qaTemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens 🙃👽", don't try to make up an answer. At the end of every answer, write three poop emojis no matter what.
   {context}
 
   Question: {question}
