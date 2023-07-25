@@ -6,7 +6,22 @@ import { Document } from 'langchain/document'
 import { timeout } from 'pineconeConfig'
 import { PineconeClient } from '@pinecone-database/pinecone'
 import { ChatOpenAI } from 'langchain/chat_models/openai'
+import { PineconeStore } from 'langchain/vectorstores/pinecone'
 
+
+export const getPineconeVectorStore = async (
+    client: PineconeClient,
+    indexName: string,
+) => {
+    const pineconeIndex = client.Index(indexName);
+
+    const pineconeVectorStore = await PineconeStore.fromExistingIndex(
+        new OpenAIEmbeddings(),
+        { pineconeIndex }
+    );
+
+    return pineconeVectorStore
+}
 
 export const queryVectorStore = async (
     client: PineconeClient,

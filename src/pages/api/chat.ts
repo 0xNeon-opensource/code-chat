@@ -1,19 +1,22 @@
 // import { ChatOpenAI } from "langchain/chat_models";
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain, loadQAStuffChain } from "langchain/chains";
+import { ConversationalRetrievalQAChain, LLMChain, RetrievalQAChain, loadQAStuffChain } from "langchain/chains";
 import { CallbackManager } from "langchain/callbacks";
 import {
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
+    PromptTemplate,
     SystemMessagePromptTemplate,
 } from "langchain/prompts";
 import { HumanChatMessage, SystemChatMessage } from "langchain/schema";
-import { queryVectorStore } from "~/utils/pinecone";
+import { getPineconeVectorStore, queryVectorStore } from "~/utils/pinecone";
 import { PineconeClient } from "@pinecone-database/pinecone";
 import { indexName } from "pineconeConfig";
 import { Document } from 'langchain/document'
-
+import { PineconeStore } from "langchain/vectorstores/pinecone";
+import { PineconeTranslator } from "langchain/retrievers/self_query/pinecone";
+import { BufferMemory } from "langchain/memory";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const config = {
@@ -22,6 +25,11 @@ export const config = {
     },
     runtime: "edge",
 };
+
+const memory = new BufferMemory({
+    memoryKey: "chat_history",
+    returnMessages: true,
+});
 
 export default async function handler(req, res) {
     const body = await req.json()
@@ -38,6 +46,15 @@ export default async function handler(req, res) {
         })
 
         const queryResponse = await queryVectorStore(client, indexName, body.query);
+
+
+        const pineconeVectorStore = await getPineconeVectorStore(client, indexName)
+
+        // (queryResponse?.matches || []).forEach(match => {
+        //     console.log('match.id :>> ', match.id);
+        //     console.log('match.metadata :>> ', match.metadata);
+        //     console.log('match.score :>> ', match.score);
+        // });
 
         if (!queryResponse.matches.length) {
             console.error('no matches!!!!!!!!')
@@ -92,13 +109,36 @@ export default async function handler(req, res) {
             .join(" ");
         // 9. Execute the chain with input documents and question
         const chain2 = loadQAStuffChain(llm);
-        chain2.call({
-            input_documents: [new Document({ pageContent: concatenatedPageContent })],
-            question: body.query,
-        });
+        // chain2.call({
+        //     input_documents: [new Document({ pageContent: concatenatedPageContent })],
+        //     question: body.query,
+        // });
         // chain
         //     .call({ input: body.query })
         //     .catch(console.error);
+
+
+        const template = `Use the following pieces of context to answer the question at the end.
+            If you don't know the answer, just say that you don't know, don't try to make up an answer.
+            Use three sentences maximum and keep the answer as concise as possible.
+            Always say "thanks for asking!" at the end of the answer.
+            {context}
+            Question: {question}
+            Helpful Answer:`;
+
+        const retrievalQaChain = ConversationalRetrievalQAChain.fromLLM(llm, pineconeVectorStore.asRetriever(), {
+            // prompt: PromptTemplate.fromTemplate(template),
+            returnSourceDocuments: true,
+            memory
+        });
+
+        const response = retrievalQaChain.call({
+            question: body.query
+        }).then(res => {
+            console.log('res :>> ', res);
+        });
+
+
 
         return new NextResponse(stream.readable, {
             headers: {

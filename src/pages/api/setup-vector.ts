@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 import { PineconeClient } from '@pinecone-database/pinecone'
 import { TextLoader } from 'langchain/document_loaders/fs/text'
 import { DirectoryLoader } from 'langchain/document_loaders/fs/directory'
-import { indexName } from 'pineconeConfig';
+import { directory, indexName } from 'pineconeConfig';
 import { createPineconeIndex, updatePinecone } from '~/utils/pinecone';
 
 export interface ErrorResponse {
@@ -17,7 +17,7 @@ export default async function handler(
     res: NextApiResponse<NextResponse | ErrorResponse>
 ) {
     try {
-        const loader = new DirectoryLoader('src/data/codeAsTxtFiles/oneReactComponent', {
+        const loader = new DirectoryLoader(directory, {
             ".txt": (path) => new TextLoader(path),
         })
 
