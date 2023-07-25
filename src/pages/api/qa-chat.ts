@@ -26,10 +26,6 @@ export const config = {
     runtime: "edge",
 };
 
-const memory = new BufferMemory({
-    memoryKey: "chat_history",
-    returnMessages: true,
-});
 
 export default async function handler(req, res) {
     const body = await req.json()
@@ -53,20 +49,30 @@ export default async function handler(req, res) {
         const stream = new TransformStream();
         const writer = stream.writable.getWriter();
 
-        const llm = new ChatOpenAI({
+        const nonStreamingModel = new ChatOpenAI({});
+
+        const streamingModel = new ChatOpenAI({
             openAIApiKey: OPENAI_API_KEY,
             temperature: 0.9,
             streaming: true,
             callbackManager: CallbackManager.fromHandlers({
                 handleLLMNewToken: async (token) => {
+                    console.log('=============================');
+                    console.log('in handleLLMNewToken');
+
+                    console.log('token :>> ', token);
                     await writer.ready;
                     await writer.write(encoder.encode(`${token}`));
                 },
                 handleLLMEnd: async () => {
+                    console.log('=============================');
+                    console.log('in handleLLMEnd');
                     await writer.ready;
                     await writer.close();
                 },
                 handleLLMError: async (e) => {
+                    console.log('=============================');
+                    console.log('in handleLLMError');
                     await writer.ready;
                     await writer.abort(e);
                 },
@@ -84,26 +90,26 @@ export default async function handler(req, res) {
         const pastMessages = [
             new HumanChatMessage("My name's Jonas"),
             new AIChatMessage("Nice to meet you, Jonas!"),
-            new HumanChatMessage("What's my name?"),
         ];
 
         const memory = new BufferMemory({
-            memoryKey: "chat_history",
-            inputKey: "question",
-            outputKey: "text",
+            memoryKey: "chat_history", // must be chat_history for ConversationalRetrievalQAChain
+            // inputKey: "question",
+            // outputKey: "text",
             returnMessages: true,
             chatHistory: new ChatMessageHistory(pastMessages),
         });
 
-        console.log('memory :>> ', memory);
-
         const convoChain = ConversationalRetrievalQAChain.fromLLM(
-            llm,
+            streamingModel,
             pineconeVectorStore.asRetriever(),
             {
                 // returnSourceDocuments: true,
                 qaTemplate,
                 memory,
+                questionGeneratorChainOptions: {
+                    llm: nonStreamingModel,
+                },
             }
         );
 
@@ -111,7 +117,7 @@ export default async function handler(req, res) {
             .call({ question: body.query })
             .then((res) => {
                 // console.log('res :>> ', res.sourceDocuments);
-                // console.log('res :>> ', res);
+                console.log('res :>> ', res);
             })
             .catch(console.error);
 
