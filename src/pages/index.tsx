@@ -91,7 +91,7 @@ const Home: NextPage = () => {
     scrollToBottom();
 
     console.log('prompt in handleUpdate :>> ', prompt);
-    const res = await fetch("/api/chat", {
+    const res = await fetch("/api/qa-chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
