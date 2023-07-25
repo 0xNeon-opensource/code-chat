@@ -1,7 +1,7 @@
 // import { ChatOpenAI } from "langchain/chat_models";
 import { NextResponse } from "next/server";
 import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain, RetrievalQAChain, loadQAStuffChain } from "langchain/chains";
+import { ConversationalRetrievalQAChain, LLMChain, RetrievalQAChain, loadQAStuffChain } from "langchain/chains";
 import { CallbackManager } from "langchain/callbacks";
 import {
     ChatPromptTemplate,
@@ -16,6 +16,7 @@ import { indexName } from "pineconeConfig";
 import { Document } from 'langchain/document'
 import { PineconeStore } from "langchain/vectorstores/pinecone";
 import { PineconeTranslator } from "langchain/retrievers/self_query/pinecone";
+import { BufferMemory } from "langchain/memory";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const config = {
@@ -24,6 +25,11 @@ export const config = {
     },
     runtime: "edge",
 };
+
+const memory = new BufferMemory({
+    memoryKey: "chat_history",
+    returnMessages: true,
+});
 
 export default async function handler(req, res) {
     const body = await req.json()
@@ -107,30 +113,27 @@ export default async function handler(req, res) {
         //     input_documents: [new Document({ pageContent: concatenatedPageContent })],
         //     question: body.query,
         // });
-        // chain
-        //     .call({ input: body.query })
-        //     .catch(console.error);
 
+        const qa_template = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens", don't try to make up an answer.
+  {context}
 
-        const template = `Use the following pieces of context to answer the question at the end.
-            If you don't know the answer, just say that you don't know, don't try to make up an answer.
-            Use three sentences maximum and keep the answer as concise as possible.
-            Always say "thanks for asking!" at the end of the answer.
-            {context}
-            Question: {question}
-            Helpful Answer:`;
+  Question: {question}
+  Helpful Answer:`;
 
-        const retrievalQaChain = RetrievalQAChain.fromLLM(llm, pineconeVectorStore.asRetriever(), {
-            prompt: PromptTemplate.fromTemplate(template),
-            returnSourceDocuments: true,
-        });
+        const convoChain = ConversationalRetrievalQAChain.fromLLM(
+            llm,
+            pineconeVectorStore.asRetriever(),
+            {
+                returnSourceDocuments: true,
+            }
+        );
 
-        const response = retrievalQaChain.call({
-            query: body.query
-        }).then(res => {
-            console.log('res :>> ', res);
-        });
-
+        convoChain
+            .call({ question: body.query, chat_history: [] })
+            .then((res) => {
+                console.log('res :>> ', res);
+            })
+            .catch(console.error);
 
 
         return new NextResponse(stream.readable, {

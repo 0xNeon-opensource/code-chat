@@ -132,45 +132,15 @@ export const updatePinecone = async (
         // 5. Split text into chunks (documents)
         const chunks = await textSplitter.createDocuments([text]);
         console.log(`Text split into ${chunks.length} chunks`);
-        console.log(
-            `Calling OpenAI's Embedding endpoint documents with ${chunks.length} text chunks ...`
-        );
-        // 6. Create OpenAI embeddings for documents
-        const embeddingsArrays = await new OpenAIEmbeddings().embedDocuments(
-            chunks.map((chunk) => chunk.pageContent.replace(/\n/g, " "))
-        );
-        console.log('Finished embedding documents');
-        console.log(
-            `Creating ${chunks.length} vectors array with id, values, and metadata...`
-        );
-        // 7. Create and upsert vectors in batches of 100
-        const batchSize = 100;
-        let batch: any = [];
-        for (let idx = 0; idx < chunks.length; idx++) {
-            const chunk = chunks[idx];
-            const vector = {
-                id: `${txtPath}_${idx}`,
-                values: embeddingsArrays[idx],
-                metadata: {
-                    ...chunk.metadata,
-                    loc: JSON.stringify(chunk.metadata.loc),
-                    pageContent: chunk.pageContent,
-                    txtPath: txtPath,
-                },
-            };
-            batch = [...batch, vector]
-            // When batch is full or it's the last item, upsert the vectors
-            if (batch.length === batchSize || idx === chunks.length - 1) {
-                await index.upsert({
-                    upsertRequest: {
-                        vectors: batch,
-                    },
-                });
-                // Empty the batch
-                batch = [];
-            }
-        }
-        // 8. Log the number of vectors updated
-        console.log(`Pinecone index updated with ${chunks.length} vectors`);
+
+        const pineconeIndex = client.Index(indexName);
+
+        await PineconeStore.fromDocuments(chunks, new OpenAIEmbeddings(), {
+            pineconeIndex,
+        });
+        console.log('chunk uploaded');
+
     }
+    console.log('✅ Pinecone index updated!');
+
 };
