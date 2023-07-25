@@ -7,6 +7,7 @@ import { Header } from "../components/Header";
 import PropagateLoader from "react-spinners/PropagateLoader";
 import TestLangChain from "~/components/TestLangChain";
 import DocumentLoader from "~/components/DocumentLoader";
+import { HumanChatMessage, AIChatMessage } from "langchain/schema";
 
 const Home: NextPage = () => {
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
@@ -98,7 +99,7 @@ const Home: NextPage = () => {
       },
       body: JSON.stringify({
         query: prompt,
-        history: [],  // You might want to replace this with actual history
+        history: chatItems,
       }),
     });
 
