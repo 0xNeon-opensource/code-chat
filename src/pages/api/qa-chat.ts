@@ -45,22 +45,7 @@ export default async function handler(req, res) {
             environment: process.env.PINECONE_ENVIRONMENT || ''
         })
 
-        const queryResponse = await queryVectorStore(client, indexName, body.query);
-
-
         const pineconeVectorStore = await getPineconeVectorStore(client, indexName)
-
-        // (queryResponse?.matches || []).forEach(match => {
-        //     console.log('match.id :>> ', match.id);
-        //     console.log('match.metadata :>> ', match.metadata);
-        //     console.log('match.score :>> ', match.score);
-        // });
-
-        if (!queryResponse.matches.length) {
-            console.error('no matches!!!!!!!!')
-            return res.status(500).json({ error: 'no matches' })
-
-        }
 
         const encoder = new TextEncoder();
         const stream = new TransformStream();
@@ -86,35 +71,7 @@ export default async function handler(req, res) {
             }),
         });
 
-        // const chain = new LLMChain({ prompt, llm });
-        // chain.call({ query: query }).catch(console.error);
-
-        // We can also construct an LLMChain from a ChatPromptTemplate and a chat model.
-        const chatPrompt = ChatPromptTemplate.fromPromptMessages([
-            SystemMessagePromptTemplate.fromTemplate(
-                "You are a helpful assistant that answers questions as best you can."
-            ),
-            HumanMessagePromptTemplate.fromTemplate("{input}"),
-        ]);
-        const chain = new LLMChain({
-            prompt: chatPrompt,
-            llm: llm,
-        });
-
-
-
-        // 8. Extract and concatenate page content from matched documents
-        const concatenatedPageContent = queryResponse.matches
-            .map((match) => match.metadata.pageContent)
-            .join(" ");
-        // 9. Execute the chain with input documents and question
-        const chain2 = loadQAStuffChain(llm);
-        // chain2.call({
-        //     input_documents: [new Document({ pageContent: concatenatedPageContent })],
-        //     question: body.query,
-        // });
-
-        const qa_template = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens", don't try to make up an answer.
+        const qaTemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens", don't try to make up an answer. At the end of every answer, write three poop emojis
   {context}
 
   Question: {question}
@@ -125,13 +82,14 @@ export default async function handler(req, res) {
             pineconeVectorStore.asRetriever(),
             {
                 returnSourceDocuments: true,
+                qaTemplate
             }
         );
 
         convoChain
             .call({ question: body.query, chat_history: [] })
             .then((res) => {
-                console.log('res :>> ', res);
+                // console.log('res :>> ', res.sourceDocuments);
             })
             .catch(console.error);
 
