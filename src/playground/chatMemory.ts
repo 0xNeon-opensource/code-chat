@@ -8,6 +8,8 @@ import { BufferMemory } from "langchain/memory";
 import * as fs from "fs";
 
 export const run = async () => {
+    console.log('CHAT MEM STARTED');
+
     const text = fs.readFileSync("src/playground/state_of_the_union.txt", "utf8");
     const textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000 });
     const docs = await textSplitter.createDocuments([text]);
@@ -37,8 +39,12 @@ export const run = async () => {
     /* Ask it a question */
     const question = "What did the president say about Justice Breyer?";
     const res = await chain.call({ question });
-    console.log(res);
+    console.log('res :>> ', res);
+    console.log('============================');
 
     const followUpRes = await chain.call({ question: "Was that nice?" });
-    console.log(followUpRes);
+    console.log('followUpRes :>> ', followUpRes);
+    console.log('============================');
+
+    console.log('chain.memory :>> ', chain.memory);
 };

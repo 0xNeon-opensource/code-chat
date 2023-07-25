@@ -17,6 +17,8 @@ import { test as simpleDocLoader } from "~/playground/simpleDocLoader";
 import { streamingLlm } from "~/playground/streamingLlm";
 import { getVectorStoreForReactProject, getVectorStoreForStateOfTheUnion } from "~/utils/ingest";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+import { run2 } from "~/playground/chatMemory2";
+import { run3 } from "~/playground/chatMemory3";
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -291,6 +293,14 @@ export const aiRouter = createTRPCRouter({
 
   testChatMemory: publicProcedure.mutation(async () => {
     await run();
+  }),
+
+  testChatMemory2: publicProcedure.mutation(async () => {
+    await run2();
+  }),
+
+  testChatMemory3: publicProcedure.mutation(async () => {
+    await run3();
   }),
 
   hello: publicProcedure

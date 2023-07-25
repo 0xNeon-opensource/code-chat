@@ -9,14 +9,14 @@ import {
     PromptTemplate,
     SystemMessagePromptTemplate,
 } from "langchain/prompts";
-import { HumanChatMessage, SystemChatMessage } from "langchain/schema";
+import { HumanChatMessage, SystemChatMessage, AIChatMessage } from "langchain/schema";
 import { getPineconeVectorStore, queryVectorStore } from "~/utils/pinecone";
 import { PineconeClient } from "@pinecone-database/pinecone";
 import { indexName } from "pineconeConfig";
 import { Document } from 'langchain/document'
 import { PineconeStore } from "langchain/vectorstores/pinecone";
 import { PineconeTranslator } from "langchain/retrievers/self_query/pinecone";
-import { BufferMemory } from "langchain/memory";
+import { BufferMemory, ChatMessageHistory } from "langchain/memory";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const config = {
@@ -33,6 +33,8 @@ const memory = new BufferMemory({
 
 export default async function handler(req, res) {
     const body = await req.json()
+
+    console.log('body :>> ', body);
 
     try {
         if (!OPENAI_API_KEY) {
@@ -71,25 +73,45 @@ export default async function handler(req, res) {
             }),
         });
 
-        const qaTemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens 🙃👽", don't try to make up an answer. At the end of every answer, write three poop emojis no matter what.
-  {context}
+        const qaTemplate = `Use the following pieces of context to answer the question at the end.
+        If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens 🙃👽", don't try to make up an answer.
+        At the end of every answer, write three poop emojis no matter what.
+        {chat_history}
 
-  Question: {question}
-  Helpful Answer:`;
+        Human: {question}
+        AI:`;
+
+        const pastMessages = [
+            new HumanChatMessage("My name's Jonas"),
+            new AIChatMessage("Nice to meet you, Jonas!"),
+            new HumanChatMessage("What's my name?"),
+        ];
+
+        const memory = new BufferMemory({
+            memoryKey: "chat_history",
+            inputKey: "question",
+            outputKey: "text",
+            returnMessages: true,
+            chatHistory: new ChatMessageHistory(pastMessages),
+        });
+
+        console.log('memory :>> ', memory);
 
         const convoChain = ConversationalRetrievalQAChain.fromLLM(
             llm,
             pineconeVectorStore.asRetriever(),
             {
-                returnSourceDocuments: true,
-                qaTemplate
+                // returnSourceDocuments: true,
+                qaTemplate,
+                memory,
             }
         );
 
         convoChain
-            .call({ question: body.query, chat_history: [] })
+            .call({ question: body.query })
             .then((res) => {
                 // console.log('res :>> ', res.sourceDocuments);
+                // console.log('res :>> ', res);
             })
             .catch(console.error);
 

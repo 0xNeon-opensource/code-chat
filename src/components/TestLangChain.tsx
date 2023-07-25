@@ -22,6 +22,18 @@ const TestLangChain: React.FC = () => {
         test3.mutate();
     }, [test3])
 
+    const test4 = api.ai.testChatMemory2.useMutation();
+    const testChatMemory2 = useCallback(async () => {
+        console.log('testing chat mem');
+        test4.mutate();
+    }, [test4])
+
+    const test5 = api.ai.testChatMemory3.useMutation();
+    const testChatMemory3 = useCallback(async () => {
+        console.log('testing chat mem');
+        test5.mutate();
+    }, [test5])
+
     const testStream = async () => {
         const res = await fetch("/api/chat", {
             method: "POST",
@@ -62,6 +74,8 @@ const TestLangChain: React.FC = () => {
             <button onClick={testDocumentLoader}>Test document loader</button>
             <button onClick={testStreamingLlm}>Test Streaming LLM</button>
             <button onClick={testChatMemory}>Test Chat Mem</button>
+            <button onClick={testChatMemory2}>Test Chat Mem 222222</button>
+            <button onClick={testChatMemory3}>Test Chat Mem 33!</button>
             <button onClick={testStream}>Test Stream 🌊💦💧🚣‍♂️</button>
         </div>
     );
