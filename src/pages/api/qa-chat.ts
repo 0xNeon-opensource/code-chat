@@ -29,11 +29,11 @@ If the question is straightforward enough, don't rephrase the question.
 Chat History:
 {chat_history}
 Follow Up Input: {question}
-Your answer should follow the following format:
+Your answer should follow the following format EXACTLY, only changing the text between the "<" and ">".:
 \`\`\`
 🤖🤖🤖🤖🤖Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
-Make sure to end each answer with three poop emojis!
+You absolutely must end each answer with three poop emojis!
 ----------------
 <Relevant chat history excerpt as context here>
 🔥🔥🔥🔥🔥 Standalone question: <Rephrased question or original question here>
