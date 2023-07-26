@@ -20,11 +20,12 @@ export const config = {
 
 // Be careful about the generator chain rephrasing the question in ways that hurt the end result.
 
-const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT =
+const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT_old =
     `Given the following conversation and a follow up question, return the conversation history excerpt that includes any
 relevant context to the question if it exists and rephrase the follow up question to be a standalone question.
-If the question is not about the context, don't rephrase the question.
+Most importantly, if the question is not about the context, don't rephrase the question.
 If the question is straightforward enough, don't rephrase the question.
+Don't change the point of view in narration. If the question is in first person, keep the rephrased question in first person.
 
 Chat History:
 {chat_history}
@@ -33,12 +34,39 @@ Your answer should follow the following format EXACTLY, only changing the text b
 \`\`\`
 🤖🤖🤖🤖🤖Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
-You absolutely must end each answer with three poop emojis!
+You absolutely must end each answer with three emojis related to the answer!
 ----------------
 <Relevant chat history excerpt as context here>
 🔥🔥🔥🔥🔥 Standalone question: <Rephrased question or original question here>
 \`\`\`
 Your answer:`;
+
+const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT =
+    `Given the following conversation and a follow up question, return the conversation history excerpt that includes any
+relevant context to the question if it exists and the given question word for word.
+
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Your answer should follow the following format EXACTLY, only changing the text between the "<" and ">".:
+\`\`\`
+🤖🤖🤖🤖🤖Use the following pieces of context to answer the users question.
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
+You absolutely must end each answer with three emojis related to the answer!
+----------------
+<Relevant chat history excerpt as context here>
+🔥🔥🔥🔥🔥 Standalone question: <Original question here>
+\`\`\`
+Your answer:`;
+
+/*
+    LATEST ISSUES:
+    - The ConversationalRetrievalQAChain asks the documents only on the first run, does not use the question generator LLM
+    - On the second run and on it uses the question generator LLM but does not use the documents (or sometimes doesn't use them, worth double checking)
+
+    What it should do:
+    - On each question, it should use the documents and the question generator LLM together.
+*/
 
 export default async function handler(req, res) {
     const body = await req.json()
@@ -97,27 +125,6 @@ export default async function handler(req, res) {
                 },
             }),
         });
-
-        const qaTemplate = `Use the following pieces of context to answer the question at the end.
-        If you don't know the answer, just say "Sorry I dont know, I am learning from Aliens 🙃👽", don't try to make up an answer.
-        At the end of every answer, write three poop emojis no matter what.
-        {chat_history}
-
-        Human: {question}
-        AI:`;
-
-        const qaTemplate2 = `
-            Answer the question based on the context below.
-            If the question cannot be answered using the information provided answer with "I don't know"
-            In your answer, respond directly to the user.
-
-            Context: {text}
-
-            Question: {question}
-
-            Answer:`;
-
-        const qaTemplate3 = `You will respond only in haikus`;
 
         const memory = new BufferMemory({
             memoryKey: "chat_history", // must be chat_history for ConversationalRetrievalQAChain
