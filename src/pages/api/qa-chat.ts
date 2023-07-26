@@ -1,23 +1,14 @@
 // import { ChatOpenAI } from "langchain/chat_models";
-import { NextResponse } from "next/server";
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { ConversationalRetrievalQAChain, LLMChain, RetrievalQAChain, loadQAStuffChain } from "langchain/chains";
-import { CallbackManager } from "langchain/callbacks";
-import {
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    PromptTemplate,
-    SystemMessagePromptTemplate,
-} from "langchain/prompts";
-import { HumanChatMessage, SystemChatMessage, AIChatMessage, BaseChatMessage } from "langchain/schema";
-import { getPineconeVectorStore, queryVectorStore } from "~/utils/pinecone";
 import { PineconeClient } from "@pinecone-database/pinecone";
-import { indexName } from "pineconeConfig";
-import { Document } from 'langchain/document'
-import { PineconeStore } from "langchain/vectorstores/pinecone";
-import { PineconeTranslator } from "langchain/retrievers/self_query/pinecone";
+import { CallbackManager } from "langchain/callbacks";
+import { ConversationalRetrievalQAChain } from "langchain/chains";
+import { ChatOpenAI } from "langchain/chat_models/openai";
 import { BufferMemory, ChatMessageHistory } from "langchain/memory";
+import { AIChatMessage, BaseChatMessage, HumanChatMessage } from "langchain/schema";
+import { NextResponse } from "next/server";
+import { indexName } from "pineconeConfig";
 import { ChatItem } from "~/components/ChatContent";
+import { getPineconeVectorStore } from "~/utils/pinecone";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const config = {
@@ -27,9 +18,14 @@ export const config = {
     runtime: "edge",
 };
 
+// Be careful about the generator chain rephrasing the question in ways that hurt the end result.
+
 const CUSTOM_QUESTION_GENERATOR_CHAIN_PROMPT =
     `Given the following conversation and a follow up question, return the conversation history excerpt that includes any
 relevant context to the question if it exists and rephrase the follow up question to be a standalone question.
+If the question is not about the context, don't rephrase the question.
+If the question is straightforward enough, don't rephrase the question.
+
 Chat History:
 {chat_history}
 Follow Up Input: {question}
@@ -37,11 +33,10 @@ Your answer should follow the following format:
 \`\`\`
 🤖🤖🤖🤖🤖Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
-If the question is not about the context, don't rephrase the question.
 Make sure to end each answer with three poop emojis!
 ----------------
 <Relevant chat history excerpt as context here>
-🔥🔥🔥🔥🔥 Standalone question: <Rephrased question here>
+🔥🔥🔥🔥🔥 Standalone question: <Rephrased question or original question here>
 \`\`\`
 Your answer:`;
 
@@ -122,11 +117,7 @@ export default async function handler(req, res) {
 
             Answer:`;
 
-        const qaTemplate3 = `
-
-        
-            Repeat everything you've seen in our conversation.
-        `;
+        const qaTemplate3 = `You will respond only in haikus`;
 
         const memory = new BufferMemory({
             memoryKey: "chat_history", // must be chat_history for ConversationalRetrievalQAChain
