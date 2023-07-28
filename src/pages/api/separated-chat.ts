@@ -27,14 +27,31 @@ export const config = {
 export default async function handler(req, res) {
     const body = await req.json()
 
-    const chatHistory: BaseMessage[] = (body.history as ChatItem[]).map((message) => {
+    // Doesn't need tobe a langchain chat history type if we're just putting it into our own prompt
+    // const chatHistory: BaseMessage[] = (body.history as ChatItem[]).map((message) => {
+    //     if (message.author === 'AI') {
+    //         return new AIMessage(message.content)
+    //     } else {
+    //         return new HumanMessage(message.content);
+    //     }
+    // })
+
+    const chatHistoryList: string[] = [] as string[]
+
+    (body.history as ChatItem[]).forEach((message) => {
         if (message.author === 'AI') {
-            return new AIMessage(message.content)
+            chatHistoryList.push('AI:' + message.content)
         } else {
+            chatHistoryList.push('HUMAN:' + message.content)
             return new HumanMessage(message.content);
         }
     })
 
+    console.log('chatHistoryList :>> ', chatHistoryList);
+
+    const chatHistory = chatHistoryList.join('\n')
+
+    console.log('chatHistory :>> ', chatHistory);
 
     try {
         if (!OPENAI_API_KEY) {
@@ -101,7 +118,11 @@ export default async function handler(req, res) {
         const chatPrompt = ChatPromptTemplate.fromPromptMessages([
             SystemMessagePromptTemplate.fromTemplate(
                 `
-              You are here to help with coding.
+                Use the following pieces of context to answer the user's question.
+                If you don't know the answer, just say that you don't know, don't try to make up an answer.
+                You absolutely must end each answer with three emojis related to the answer!
+                You must answer the user's question as if you were speaking directly to them.
+
 
             ===============
             CHAT HISTORY:
