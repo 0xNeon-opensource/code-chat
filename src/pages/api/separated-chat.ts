@@ -78,16 +78,12 @@ export default async function handler(req, res) {
 
         const queryResponse = await queryVectorStore(client, indexName, body.query);
 
-
-        const pineconeVectorStore = await getPineconeVectorStore(client, indexName)
-
-        console.log('pineconeVectorStore :>> ', pineconeVectorStore.embeddings);
-
-
+        const inputDocuments = [] as Document[]
         (queryResponse?.matches || []).forEach(match => {
-            console.log('match.id :>> ', match.id);
-            console.log('match.metadata :>> ', match.metadata);
-            console.log('match.score :>> ', match.score);
+            // console.log('match.id :>> ', match.id);
+            // console.log('match.metadata :>> ', match.metadata);
+            // console.log('match.score :>> ', match.score);
+            inputDocuments.push(new Document({ pageContent: match.metadata.text, metadata: { test: '🔥🔥🔥🔥🔥🔥' } }))
         });
 
         if (!queryResponse.matches.length) {
@@ -96,23 +92,44 @@ export default async function handler(req, res) {
 
         }
 
+        // temporarily just make all documents one big text
         const concatenatedPageContent = queryResponse.matches
-            .map((match) => {
-                console.log('match :>> ', match);
-                return match.metadata.text
-            })
+            .map((match) => match.metadata.text)
             .join(" ");
 
-        console.log('concatenatedPageContent :>> ', concatenatedPageContent);
 
-        const documentsChain = loadQAStuffChain(asyncModel);
-        const result = await documentsChain.call({
-            input_documents: [new Document({ pageContent: concatenatedPageContent })],
+        const chatPrompt = ChatPromptTemplate.fromPromptMessages([
+            SystemMessagePromptTemplate.fromTemplate(
+                `
+              You are here to help with coding.
+
+            ===============
+            CHAT HISTORY:
+            {chatHistory}
+            ===============
+            RELEVENT DOCUMENTS:
+            {inputDocuments}
+            ===============
+            QUESTION:
+            {question}
+            ===============
+            ANSWER:
+              `
+            ),
+            // HumanMessagePromptTemplate.fromTemplate("{chatHistory}"),
+        ]);
+
+        const documentsChain = new LLMChain({
+            llm: streamingModel,
+            prompt: chatPrompt,
+            verbose: true
+        });
+        // const documentsChain = loadQAStuffChain(streamingModel, { verbose: true });
+        documentsChain.call({
+            chatHistory,
+            inputDocuments: concatenatedPageContent,
             question: body.query,
         });
-
-        console.log('result :>> ', result);
-
 
         return new NextResponse(stream.readable, {
             headers: {
