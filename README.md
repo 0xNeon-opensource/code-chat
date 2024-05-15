@@ -2,14 +2,14 @@
 
 Experimental dev setup for a chat bot connected to local repo and docs to assist with coding.
 
+![Example Image](./public/dev-shop.png)
+
 
 ## Stack
-- T3
-- React
 - Next
 - tRPC
-- Zod
-- Tailwind
+- Pinecone vector db
+- Langchain
 
 ## Setup
 
