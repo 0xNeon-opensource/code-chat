@@ -1,4 +1,4 @@
-# Code Chat
+# Dev Shop
 
 Experimental dev setup for a chat bot connected to local repo and docs to assist with coding.
 
